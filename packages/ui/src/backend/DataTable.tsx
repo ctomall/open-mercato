@@ -1136,7 +1136,14 @@ function ColumnResizeHandle({
   )
 }
 
-function SortableHeaderCell({ id, children, className, width }: { id: string; children: React.ReactNode; className?: string; width?: number }) {
+type AriaSortValue = 'ascending' | 'descending' | 'none'
+function ariaSortFor(state: false | 'asc' | 'desc'): AriaSortValue {
+  if (state === 'asc') return 'ascending'
+  if (state === 'desc') return 'descending'
+  return 'none'
+}
+
+function SortableHeaderCell({ id, children, className, width, ariaSort }: { id: string; children: React.ReactNode; className?: string; width?: number; ariaSort?: AriaSortValue }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const isSticky = typeof className === 'string' && className.includes('sticky')
   const style: React.CSSProperties = {
@@ -1148,7 +1155,7 @@ function SortableHeaderCell({ id, children, className, width }: { id: string; ch
     ...(typeof width === 'number' ? { width, minWidth: width, maxWidth: width } : {}),
   }
   return (
-    <TableHead ref={setNodeRef} style={style} className={className} {...attributes} {...listeners}>
+    <TableHead ref={setNodeRef} style={style} className={className} aria-sort={ariaSort} {...attributes} {...listeners}>
       {children}
     </TableHead>
   )
@@ -3761,7 +3768,7 @@ function DataTableImpl<T extends RowData>({
                     />
                   ) : null
                   return enableHeaderDnd ? (
-                    <SortableHeaderCell key={header.id} id={header.id} width={sizedWidth} className={cn('group', responsiveClass(priority, columnMeta?.hidden) + stickyClass)}>
+                    <SortableHeaderCell key={header.id} id={header.id} width={sizedWidth} ariaSort={ariaSortFor(header.column.getIsSorted())} className={cn('group', responsiveClass(priority, columnMeta?.hidden) + stickyClass)}>
                       {headerCellContent}
                       {resizeHandle}
                     </SortableHeaderCell>
@@ -3769,6 +3776,7 @@ function DataTableImpl<T extends RowData>({
                     <TableHead
                       key={header.id}
                       className={cn('group relative', responsiveClass(priority, columnMeta?.hidden) + stickyClass)}
+                      aria-sort={ariaSortFor(header.column.getIsSorted())}
                       style={typeof sizedWidth === 'number' ? { width: sizedWidth, minWidth: sizedWidth, maxWidth: sizedWidth } : undefined}
                     >
                       {headerCellContent}
@@ -3802,7 +3810,10 @@ function DataTableImpl<T extends RowData>({
             ) : error ? (
               <TableRow>
                 <TableCell colSpan={mergedColumns.length + (rowActions || injectedRowActions.length > 0 ? 1 : 0) + (hasInjectedBulkActions ? 1 : 0)} className="h-24 text-center text-destructive">
-                  {error}
+                  <span className="flex flex-col items-center gap-2">
+                    <img src="/brand/state-error.svg" alt="" aria-hidden width={160} height={120} className="opacity-80" />
+                    {error}
+                  </span>
                 </TableCell>
               </TableRow>
             ) : allRows.length ? (
@@ -4000,6 +4011,16 @@ function DataTableImpl<T extends RowData>({
                     ) : (
                       <EmptyState
                         variant="subtle"
+                        illustration={
+                          <img
+                            src="/brand/state-empty.svg"
+                            alt=""
+                            aria-hidden
+                            width={160}
+                            height={120}
+                            className="opacity-70 text-muted-foreground"
+                          />
+                        }
                         icon={<Inbox className="size-6" aria-hidden />}
                         title={
                           typeof emptyState === 'string'
