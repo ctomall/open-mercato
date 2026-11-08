@@ -9,6 +9,8 @@
  * components). Omitting it keeps the runtime default, which varies per machine
  * and is therefore not assertable in tests.
  */
+import { resolveFormatLocale } from './format-locale'
+
 export function formatCurrency(
   value: string | number | null | undefined,
   currency?: string | null,
@@ -22,12 +24,12 @@ export function formatCurrency(
   const code = currency && currency.length === 3 ? currency.toUpperCase() : undefined
   try {
     if (code) {
-      return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(numeric)
+      return new Intl.NumberFormat(resolveFormatLocale(locale), { style: 'currency', currency: code }).format(numeric)
     }
   } catch {
     // fall through to plain number formatting
   }
-  const formatted = new Intl.NumberFormat(locale).format(numeric)
+  const formatted = new Intl.NumberFormat(resolveFormatLocale(locale)).format(numeric)
   return code ? `${formatted} ${code}` : formatted
 }
 

@@ -12,6 +12,7 @@ import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterBar
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { apiCall, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
+import { getFormatLocale } from '@open-mercato/ui/utils/format-locale'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { buildCrudExportUrl, deleteCrud } from '@open-mercato/ui/backend/utils/crud'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -139,10 +140,10 @@ function formatCurrency(amount: number | null | undefined, currency: string | nu
   if (amount == null || Number.isNaN(amount)) return fallback
   try {
     if (currency && currency.trim().length) {
-      const formatter = new Intl.NumberFormat(undefined, { style: 'currency', currency })
+      const formatter = new Intl.NumberFormat(getFormatLocale(), { style: 'currency', currency })
       return formatter.format(amount)
     }
-    return new Intl.NumberFormat(undefined, { style: 'decimal', maximumFractionDigits: 2 }).format(amount)
+    return new Intl.NumberFormat(getFormatLocale(), { style: 'decimal', maximumFractionDigits: 2 }).format(amount)
   } catch {
     return String(amount)
   }
@@ -726,25 +727,25 @@ export function SalesDocumentsTable({ kind }: { kind: SalesDocumentKind }) {
     {
       id: 'lineItemCount',
       accessorKey: 'lineItemCount',
-      header: t('sales.documents.list.table.items', 'Items'),
+      header: <span className="block text-right">{t('sales.documents.list.table.items', 'Items')}</span>,
       cell: ({ row }) => (
-        <span className="text-sm font-semibold">{typeof row.original.lineItemCount === 'number' ? row.original.lineItemCount : '—'}</span>
+        <span className="text-sm font-semibold text-right tabular-nums">{typeof row.original.lineItemCount === 'number' ? row.original.lineItemCount : '—'}</span>
       ),
     },
     {
       id: 'grandTotalNetAmount',
       accessorKey: 'totalNet',
-      header: t('sales.documents.list.table.totalNet', 'Total (net)'),
+      header: <span className="block text-right">{t('sales.documents.list.table.totalNet', 'Total (net)')}</span>,
       cell: ({ row }) => (
-        <span className="text-sm">{formatCurrency(row.original.totalNet ?? null, row.original.currency)}</span>
+        <span className="text-sm text-right tabular-nums">{formatCurrency(row.original.totalNet ?? null, row.original.currency)}</span>
       ),
     },
     {
       id: 'grandTotalGrossAmount',
       accessorKey: 'totalGross',
-      header: t('sales.documents.list.table.totalGross', 'Total (gross)'),
+      header: <span className="block text-right">{t('sales.documents.list.table.totalGross', 'Total (gross)')}</span>,
       cell: ({ row }) => (
-        <span className="text-sm">{formatCurrency(row.original.totalGross ?? null, row.original.currency)}</span>
+        <span className="text-sm text-right tabular-nums">{formatCurrency(row.original.totalGross ?? null, row.original.currency)}</span>
       ),
     },
     {
@@ -753,7 +754,7 @@ export function SalesDocumentsTable({ kind }: { kind: SalesDocumentKind }) {
       header: t('sales.documents.list.table.date', 'Date'),
       cell: ({ row }) =>
         row.original.date
-          ? <span className="text-xs text-muted-foreground">{new Date(row.original.date).toLocaleString()}</span>
+          ? <span className="text-xs text-muted-foreground">{new Date(row.original.date).toLocaleString(getFormatLocale())}</span>
           : <span className="text-xs text-muted-foreground">—</span>,
     },
   ], [channelsEnabled, kind, statusMap, t])
