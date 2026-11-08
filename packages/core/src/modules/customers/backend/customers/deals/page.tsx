@@ -46,6 +46,7 @@ import {
   type CustomerDictionaryKind,
   type CustomerDictionaryMap,
 } from '../../../lib/dictionaries'
+import { resolveCustomFieldOptionLabel } from '../../../lib/customFieldOptionLabel'
 import {
   ensureCustomerDictionary,
   invalidateCustomerDictionary,
@@ -812,7 +813,7 @@ export default function CustomersDealsPage() {
           filterGroup: def.group?.title ?? t('ui.columnChooser.customFieldsGroup', 'Custom Fields'),
           filterType: mapCustomFieldKindToFilterType(def.kind),
           filterOptions: normalizeCustomFieldFilterOptions(def.options),
-          hidden: def.listVisible === false,
+          hidden: true,
           maxWidth: '220px',
         },
         cell: ({ getValue }) => {
@@ -841,7 +842,8 @@ export default function CustomersDealsPage() {
           }
           const stringValue = typeof value === 'string' ? value.trim() : String(value)
           if (!stringValue) return noValue
-          return <span className="text-sm">{stringValue}</span>
+          const optionLabel = resolveCustomFieldOptionLabel(def, stringValue)
+          return <span className="text-sm">{optionLabel ?? stringValue}</span>
         },
       }))
 
@@ -894,6 +896,7 @@ export default function CustomersDealsPage() {
         accessorKey: 'pipelineStage',
         header: t('customers.deals.list.columns.pipelineStage'),
         meta: {
+          hidden: true,
           filterType: 'select' as const,
           filterOptions: dictionaryOptions.pipelineStages,
           columnChooserGroup: 'Pipeline',
@@ -911,6 +914,7 @@ export default function CustomersDealsPage() {
         accessorKey: 'pipelineId',
         header: t('customers.deals.list.columns.pipeline', 'Pipeline'),
         meta: {
+          hidden: true,
           columnChooserGroup: 'Pipeline',
           filterKey: 'pipeline_id',
           filterGroup: 'Deal',
@@ -946,6 +950,7 @@ export default function CustomersDealsPage() {
         accessorKey: 'probability',
         header: t('customers.deals.list.columns.probability'),
         meta: {
+          hidden: true,
           filterType: 'number' as const,
           columnChooserGroup: 'Financial',
           filterKey: 'probability',
@@ -1004,6 +1009,7 @@ export default function CustomersDealsPage() {
         accessorKey: 'ownerUserId',
         header: t('customers.deals.list.columns.owner', 'Owner'),
         meta: {
+          hidden: true,
           columnChooserGroup: 'CRM',
           filterType: 'select',
           filterOptions: resolvedOwnerFilterOptions,
@@ -1028,6 +1034,7 @@ export default function CustomersDealsPage() {
         accessorKey: 'companies',
         header: t('customers.deals.list.columns.companies'),
         meta: {
+          hidden: true,
           columnChooserGroup: 'Associations',
           filterable: false,
           filterGroup: 'CRM',
@@ -1059,6 +1066,7 @@ export default function CustomersDealsPage() {
         accessorKey: 'people',
         header: t('customers.deals.list.columns.people'),
         meta: {
+          hidden: true,
           columnChooserGroup: 'Associations',
           filterable: false,
           filterGroup: 'CRM',
@@ -1098,6 +1106,7 @@ export default function CustomersDealsPage() {
         accessorKey: 'updatedAt',
         header: t('customers.deals.list.columns.updatedAt'),
         meta: {
+          hidden: true,
           columnChooserGroup: 'Dates',
           filterKey: 'updated_at',
           filterGroup: 'Activity',

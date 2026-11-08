@@ -35,6 +35,7 @@ import {
   type CustomerDictionaryKind,
   type CustomerDictionaryMap,
 } from '../../../lib/dictionaries'
+import { resolveCustomFieldOptionLabel } from '../../../lib/customFieldOptionLabel'
 import {
   useCustomFieldDefs,
 } from '@open-mercato/ui/backend/utils/customFieldDefs'
@@ -242,6 +243,8 @@ export default function CustomersCompaniesPage() {
     setPage(1)
   }, [filterPanel])
   const [isLoading, setIsLoading] = React.useState(true)
+  // A failed fetch used to leave `rows` untouched, so the table read as "no data".
+  const [loadError, setLoadError] = React.useState<string | null>(null)
   const [reloadToken, setReloadToken] = React.useState(0)
   const [cacheStatus, setCacheStatus] = React.useState<'hit' | 'miss' | null>(null)
   const [dictionaryMaps, setDictionaryMaps] = React.useState<Record<DictionaryKindKey, DictionaryMap>>(createEmptyCustomerDictionaryMaps())
@@ -416,11 +419,13 @@ export default function CustomersCompaniesPage() {
           const errorPayload = call.result as { error?: string } | undefined
           const message = typeof errorPayload?.error === 'string' ? errorPayload.error : t('customers.companies.list.error.load')
           flash(message, 'error')
+          if (!cancelled) setLoadError(message)
           if (!cancelled) setCacheStatus(null)
           return
         }
         const payload = call.result ?? {}
         if (cancelled) return
+        setLoadError(null)
         setCacheStatus(call.cacheStatus ?? null)
         const items = Array.isArray(payload.items) ? payload.items : []
         setRows(items.map((item) => mapApiItem(item as Record<string, unknown>)).filter((row): row is CompanyRow => !!row))
@@ -430,8 +435,16 @@ export default function CustomersCompaniesPage() {
       } catch (err) {
         if (!cancelled) {
           setCacheStatus(null)
-          const message = err instanceof Error ? err.message : t('customers.companies.list.error.load')
+          // A blocked or offline fetch rejects with the browser's own `TypeError: Failed to fetch`;
+          // that string is not ours and not localised, so the app copy wins here.
+          const message =
+            err instanceof TypeError
+              ? t('customers.companies.list.error.network', '无法连接服务器，请检查网络后重试')
+              : err instanceof Error
+                ? err.message
+                : t('customers.companies.list.error.load')
           flash(message, 'error')
+          setLoadError(message)
         }
       } finally {
         if (!cancelled) setIsLoading(false)
@@ -609,6 +622,14 @@ export default function CustomersCompaniesPage() {
       return <span className="text-sm">{stringValue}</span>
     }
 
+    const renderCustomFieldCellForDef = (value: unknown, def: { options?: unknown }) => {
+      if (typeof value === 'string') {
+        const label = resolveCustomFieldOptionLabel(def, value)
+        if (label) return renderCustomFieldCell(label)
+      }
+      return renderCustomFieldCell(value)
+    }
+
     const baseColumns: ColumnDef<CompanyRow>[] = [
       {
         accessorKey: 'name',
@@ -630,6 +651,7 @@ export default function CustomersCompaniesPage() {
         accessorKey: 'email',
         header: t('customers.companies.list.columns.email'),
         meta: {
+          hidden: true,
           columnChooserGroup: 'Contact',
           filterKey: 'primary_email',
           filterGroup: 'Contact',
@@ -678,6 +700,7 @@ export default function CustomersCompaniesPage() {
         accessorKey: 'nextInteractionAt',
         header: t('customers.companies.list.columns.nextInteraction'),
         meta: {
+          hidden: true,
           columnChooserGroup: 'Dates',
           filterKey: 'next_interaction_at',
           filterGroup: 'Activity',
@@ -711,6 +734,7 @@ export default function CustomersCompaniesPage() {
         accessorKey: 'source',
         header: t('customers.companies.list.columns.source'),
         meta: {
+          hidden: true,
           filterType: 'select' as const,
           filterOptions: dictionaryOptions.sources,
           columnChooserGroup: 'Basic Info',
@@ -835,10 +859,10 @@ export default function CustomersCompaniesPage() {
           filterGroup: def.group?.title ?? t('ui.columnChooser.customFieldsGroup', 'Custom Fields'),
           filterType: mapCustomFieldKindToFilterType(def.kind),
           filterOptions: normalizeCustomFieldFilterOptions(def.options),
-          hidden: def.listVisible === false,
+          hidden: def.listVisible === false || def.key !== 'relationship_health',
           maxWidth: '220px',
         },
-        cell: ({ getValue }) => renderCustomFieldCell(getValue()),
+        cell: ({ getValue }) => renderCustomFieldCellForDef(getValue(), def),
       }))
 
     return [...baseColumns, ...customColumns]
@@ -971,6 +995,7 @@ export default function CustomersCompaniesPage() {
           virtualized
           pagination={{ page, pageSize, total, totalPages, totalIsCapped, onPageChange: setPage, pageSizeOptions: [10, 25, 50, 100], onPageSizeChange: handlePageSizeChange, cacheStatus }}
           isLoading={isLoading}
+          error={loadError}
         />
         <AdvancedFilterPanel
           fields={advancedFilterFields}
