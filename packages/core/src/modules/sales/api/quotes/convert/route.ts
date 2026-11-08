@@ -181,6 +181,12 @@ export async function POST(req: Request) {
     if (interceptorRejection) {
       return NextResponse.json(interceptorRejection.body, { status: interceptorRejection.status })
     }
+    // Validation errors used to be swallowed into the same generic sentence as a business
+    // rejection, so a caller that sent the wrong field name could not tell the difference.
+    if (err && typeof err === 'object' && (err as { name?: string }).name === 'ZodError') {
+      const issues = (err as { issues?: unknown }).issues ?? []
+      return NextResponse.json({ error: '参数校验失败', details: issues }, { status: 422 })
+    }
     const { translate } = await resolveTranslations()
     logger.error('sales.quotes.convert failed', { err })
     return NextResponse.json(

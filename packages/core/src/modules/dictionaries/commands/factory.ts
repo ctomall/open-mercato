@@ -123,10 +123,22 @@ async function loadSnapshot(em: EntityManager, id: string): Promise<DictionaryEn
   }
 }
 
+/**
+ * Importers split CRLF input on \n, so a trailing CR used to reach the label and
+ * render as an invisible control character in every status and currency picker.
+ * Normalise at the single write point instead of trusting each caller.
+ */
+function stripControlChars(value: string | null | undefined): string {
+  if (typeof value !== 'string') return value as unknown as string
+  return value.replace(/[\u0000-\u001F\u007F]+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 function applySnapshot(entry: DictionaryEntry, snapshot: DictionaryEntrySnapshot): void {
-  entry.value = snapshot.value
-  entry.normalizedValue = normalizeDictionaryValue(snapshot.value)
-  entry.label = snapshot.label
+  const normalizedValue = stripControlChars(snapshot.value)
+  const normalizedLabel = stripControlChars(snapshot.label)
+  entry.value = normalizedValue
+  entry.normalizedValue = normalizeDictionaryValue(normalizedValue)
+  entry.label = normalizedLabel
   entry.color = snapshot.color ?? null
   entry.icon = snapshot.icon ?? null
   if (snapshot.position !== undefined) entry.position = snapshot.position

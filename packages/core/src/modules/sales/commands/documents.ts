@@ -6689,6 +6689,25 @@ const quoteConvertToOrderSchema = z.object({
   orderNumber: z.string().trim().max(191).optional(),
 });
 
+/**
+ * A quote converts to an order only once the customer has it. Without this the command
+ * turned an unsent draft into a sales order and answered 200, which silently consumed the
+ * quote (conversion removes the source document).
+ *
+ * The status vocabulary is a tenant-configurable dictionary, so only the two states this
+ * workflow can convert from are named and everything else passes through.
+ */
+function assertConvertibleStatus(quote: { status?: string | null }, translate: (key: string, fallback?: string) => string): void {
+  const status = typeof quote.status === 'string' ? quote.status.trim().toLowerCase() : ''
+  if (status === 'sent' || status === 'accepted') return
+  throw new CrudHttpError(409, {
+    error: translate(
+      'sales.documents.detail.convertNotAccepted',
+      status ? `\u62a5\u4ef7\u5355\u5f53\u524d\u72b6\u6001\u4e3a\u300c${quote.status}\u300d\uff0c\u9700\u5148\u53d1\u9001\u5e76\u786e\u8ba4\u540e\u624d\u80fd\u8f6c\u8ba2\u5355\u3002` : '\u62a5\u4ef7\u5355\u5c1a\u672a\u53d1\u9001\uff0c\u9700\u5148\u53d1\u9001\u5e76\u786e\u8ba4\u540e\u624d\u80fd\u8f6c\u8ba2\u5355\u3002',
+    ),
+  })
+}
+
 const convertQuoteToOrderCommand: CommandHandler<
   { body?: Record<string, unknown>; query?: Record<string, unknown> },
   { orderId: string }
@@ -6749,6 +6768,7 @@ const convertQuoteToOrderCommand: CommandHandler<
             "sales.documents.detail.error",
             "Document not found or inaccessible.",
           ));
+      assertConvertibleStatus(quote, translate);
       const orderId = payload.orderId ?? quote.id;
       const existingOrder = await findOneWithDecryption(em, SalesOrder, {
         id: orderId,
